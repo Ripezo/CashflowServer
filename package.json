@@ -1,0 +1,14 @@
+{
+  "name": "cashflowserver",
+  "version": "1.0.0",
+  "description": "Rework to Robert Kiyosaki's Cashflow Game.",
+  "main": "index.js",
+  "author": "Ripezo",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.3",
+    "lodash": "^4.17.10",
+    "mongoose": "^5.2.7",
+    "socket.io": "^2.1.1"
+  }
+}
