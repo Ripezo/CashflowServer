@@ -16,47 +16,45 @@ UserManager.prototype.addEventListeners = function()
 	SocketManager.on('connection', function(socket)
 	{
 		socket.emit('whois');
-		socket.on('login', function(data){ this.login(socket, data); }.bind(this));
-		socket.on('register', function(data){ this.register(socket, data); }.bind(this));
+		socket.on('user-login', function(data){ this.login(socket, data); }.bind(this));
+		socket.on('user-register', function(data){ this.register(socket, data); }.bind(this));
 	}.bind(this));
 };
 
 UserManager.prototype.login = function(socket, data)
 {
-	var currentEditor = Lodash.find(this.currentUsers, function(editor) { return editor.email == data.email; });
-	if(currentEditor)
+
+	console.log(data);
+	var currentUser = Lodash.find(this.currentUsers, function(user) { return user.token == data.token; });
+
+	console.log(currentUser);
+	if(currentUser)
 	{
-		this.saveUser(socket, currentEditor);
+		this.saveUser(socket, currentUser, data);
 	}
 	else
 	{
-		User.findOne({ email : data.email }, function(error, editorFound)
+		User.findOne({ token : data.token }, function(error, userFound)
 		{
-			if(editorFound)
+			console.log(userFound);
+			if(userFound)
 			{
-				if(editorFound.token == data.token)
-				{
-					this.currentUsers.push(editorFound);
-					this.saveUser(socket, editorFound);
-				}
-				else
-				{
-					socket.emit('login', { success : false, error : 'Email o Password incorrecto.' });
-				}
+				this.currentUsers.push(userFound);
+				this.saveUser(socket, userFound, data);
 			}
 			else
 			{
-				socket.emit('login', { success : false, error : 'Cuenta de correo no registrada.' });
+				socket.emit('login', { success : false, error : 'Email o Password incorrecto.' });
 			}
 		}.bind(this));
 	}
 };
 
-UserManager.prototype.saveUser = function(socket, editor)
+UserManager.prototype.saveUser = function(socket, user, data)
 {
-	editor.socketId = socket.id;
-	editor.markModified('socketId');
-	editor.save(function (error, savedEditor)
+	user.socketId = socket.id;
+	user.markModified('socketId');
+	user.save(function (error, savedUser)
 	{
 		if(error)
 		{
@@ -66,31 +64,34 @@ UserManager.prototype.saveUser = function(socket, editor)
 		}
 		else
 		{
-			console.log(savedEditor.nickname + ' se ha conectado.');
-			var cookieValue = savedEditor.email + ':' + savedEditor.token;
-			socket.emit('login', { success : cookieValue });
+			console.log(savedUser.name + ' se ha conectado.');
+			data.name = user.name;
+			socket.emit('login', { success : data });
 		}
 	});
 };
 
 UserManager.prototype.register = function(socket, data)
 {
-	User.findOne({ email : data.email }, function(error, editorFound)
+	User.findOne({ email : data.email }, function(error, userFound)
 	{
-		if(editorFound)
+		if(userFound)
 		{
-			socket.emit('register', { success : false, error : 'Esta cuenta de correo ya está registrado.' });
+			socket.emit('register', {
+				success : false,
+				error : 'Esta cuenta de correo ya está registrado.'
+			});
 		}
 		else
 		{
-			var editor = new User({
-				nickname : data.nickname,
+			var user = new User({
+				name : data.name,
 				email : data.email,
 				token : data.token,
 				socketId : socket.id
 			});
 
-			editor.save(function (error, savedEditor)
+			user.save(function (error, savedUser)
 			{
 				if(error)
 				{
@@ -102,10 +103,9 @@ UserManager.prototype.register = function(socket, data)
 				else
 				{
 					console.log('Un nuevo usuario ha sido creado:');
-					console.log(savedEditor);
+					console.log(savedUser);
 					console.log('------');
-					var cookieValue = savedEditor.email + ':' + savedEditor.token;
-					socket.emit('register', { success : cookieValue });
+					socket.emit('register', { success : data });
 				}
 			});
 		}
